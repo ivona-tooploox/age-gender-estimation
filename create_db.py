@@ -1,5 +1,6 @@
 import numpy as np
 import cv2
+import os
 import scipy.io
 import argparse
 from tqdm import tqdm
@@ -57,6 +58,7 @@ def main():
             out_imgs.append(cv2.resize(img, (img_size, img_size)))
         except cv2.error:
             print(root_path + str(full_path[i][0]), 'cannot be read')
+            os.remove(root_path + str(full_path[i][0]))
 
     output = {"image": np.array(out_imgs), "gender": np.array(out_genders), "age": np.array(out_ages),
               "db": db, "img_size": img_size, "min_score": min_score}
