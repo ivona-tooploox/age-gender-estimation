@@ -49,13 +49,13 @@ def main():
             continue
 
         if np.isnan(gender[i]):
-            continue
-
-        out_genders.append(int(gender[i]))
-        out_ages.append(age[i])
+            continue        
+        
         img = cv2.imread(root_path + str(full_path[i][0]))
         try:
             out_imgs.append(cv2.resize(img, (img_size, img_size)))
+            out_genders.append(int(gender[i]))
+            out_ages.append(age[i])
         except cv2.error:
             print(root_path + str(full_path[i][0]), 'cannot be read')
             os.remove(root_path + str(full_path[i][0]))
