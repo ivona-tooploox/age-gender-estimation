@@ -53,7 +53,10 @@ def main():
         out_genders.append(int(gender[i]))
         out_ages.append(age[i])
         img = cv2.imread(root_path + str(full_path[i][0]))
-        out_imgs.append(cv2.resize(img, (img_size, img_size)))
+        try:
+            out_imgs.append(cv2.resize(img, (img_size, img_size)))
+        except cv2.error:
+            print(root_path + str(full_path[i][0]), 'cannot be read')
 
     output = {"image": np.array(out_imgs), "gender": np.array(out_genders), "age": np.array(out_ages),
               "db": db, "img_size": img_size, "min_score": min_score}
