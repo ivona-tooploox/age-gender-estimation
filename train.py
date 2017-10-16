@@ -83,9 +83,9 @@ def main():
                  ]
 
     logging.debug("Running training...")
-    print('length of X', len(X_data))
-    print('length of y_data_g', y_data_g)
-    print('length of y_data_a', len(y_data_a))
+    # print('length of X', len(X_data))
+    # print('length of y_data_g', y_data_g)
+    # print('length of y_data_a', len(y_data_a))
     hist = model.fit(X_data, [y_data_g, y_data_a], batch_size=batch_size, epochs=nb_epochs, callbacks=callbacks,
                      validation_split=validation_split)
 
