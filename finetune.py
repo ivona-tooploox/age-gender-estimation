@@ -2,7 +2,9 @@ import pandas as pd
 import logging
 import argparse
 import os
+import numpy as np
 from keras.callbacks import LearningRateScheduler, ModelCheckpoint
+from keras.preprocessing.image import ImageDataGenerator
 from keras.optimizers import SGD
 from keras.utils import np_utils
 from wide_resnet import WideResNet
@@ -44,6 +46,11 @@ def get_args():
     return args
 
 
+
+    
+
+
+
 def main():
     args = get_args()
     input_path = args.input
@@ -54,50 +61,27 @@ def main():
     validation_split = args.validation_split
 
     logging.debug("Loading data...")
+
     image, gender, age, _, image_size, _ = load_data(input_path)
     X_data = image
-    y_data_g = np_utils.to_categorical(gender, 2)
-    y_data_a = np_utils.to_categorical(age, 101)
+    # y_data_g = np_utils.to_categorical(gender, 2)
+    # y_data_a = np_utils.to_categorical(age, 101)
 
     #Load weights
     weight_file = os.path.join("pretrained_models", "weights.18-4.06.hdf5")
-
+    
+    # Build model
     model = WideResNet(image_size, depth=depth, k=k)()
     model.load_weights(weight_file)
 
-    sgd = SGD(lr=0.1, momentum=0.9, nesterov=True)
-    model.compile(optimizer=sgd, loss=["categorical_crossentropy", "categorical_crossentropy"],
-                  metrics=['accuracy'])
+    #save output as numpy array
+    bottleneck_features = model.predict(X_data)
+    print('bottleneck_features', bottleneck_features)
+    np.save(open('bottleneck_features.npy', 'w'), bottleneck_features)
 
-    logging.debug("Model summary...")
-    model.count_params()
-    model.summary()
+    
 
-    logging.debug("Saving model...")
-    mk_dir("models")
-    with open(os.path.join("models", "WRN_{}_{}.json".format(depth, k)), "w") as f:
-        f.write(model.to_json())
-
-    mk_dir("checkpoints")
-    callbacks = [LearningRateScheduler(schedule=Schedule(nb_epochs)),
-                 ModelCheckpoint("checkpoints/weights.{epoch:02d}-{val_loss:.2f}.hdf5",
-                                 monitor="val_loss",
-                                 verbose=1,
-                                 save_best_only=True,
-                                 mode="auto")
-                 ]
-
-    logging.debug("Running training...")
-    # print('length of X', len(X_data))
-    # print('length of y_data_g', y_data_g)
-    # print('length of y_data_a', len(y_data_a))
-    hist = model.fit(X_data, [y_data_g, y_data_a], batch_size=batch_size, epochs=nb_epochs, callbacks=callbacks,
-                     validation_split=validation_split)
-
-    logging.debug("Saving weights...")
-    model.save_weights(os.path.join("models", "WRN_{}_{}.h5".format(depth, k)), overwrite=True)
-    pd.DataFrame(hist.history).to_hdf(os.path.join("models", "history_{}_{}.h5".format(depth, k)), "history")
-
+    
 
 if __name__ == '__main__':
     main()
