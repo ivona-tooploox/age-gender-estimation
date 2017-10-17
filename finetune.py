@@ -74,10 +74,14 @@ def main():
     model = WideResNet(image_size, depth=depth, k=k)()
     model.load_weights(weight_file)
 
+    print('Model layers number', len(model.layers))
+    for layer in model.layers:
+        print(layer)
+
     #save output as numpy array
     bottleneck_features = model.predict(X_data)
-    print('bottleneck_features', bottleneck_features)
-    np.save(open('bottleneck_features.npy', 'w'), bottleneck_features)
+
+    np.save(open('bottleneck_features.npy', 'wb'), bottleneck_features[1])
 
     
 

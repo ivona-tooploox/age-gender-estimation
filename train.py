@@ -40,6 +40,8 @@ def get_args():
                         help="width of network")
     parser.add_argument("--validation_split", type=float, default=0.1,
                         help="validation split ratio")
+    parser.add_argument("--freeze_layers", type=int, default=0,
+                        help="Freeze layers for training")
     args = parser.parse_args()
     return args
 
@@ -49,6 +51,7 @@ def main():
     input_path = args.input
     batch_size = args.batch_size
     nb_epochs = args.nb_epochs
+    freeze_layers = args.freeze_layers
     depth = args.depth
     k = args.width
     validation_split = args.validation_split
@@ -64,6 +67,13 @@ def main():
 
     model = WideResNet(image_size, depth=depth, k=k)()
     model.load_weights(weight_file)
+
+    # set the first 50 layers 
+    # to non-trainable (weights will not be updated)
+    print(len(model.layers))
+    if freeze_layers > 0 :
+        for layer in model.layers[:freeze_layers]:
+            layer.trainable = False
 
     sgd = SGD(lr=0.1, momentum=0.9, nesterov=True)
     model.compile(optimizer=sgd, loss=["categorical_crossentropy", "categorical_crossentropy"],
