@@ -110,7 +110,7 @@ epochs = [10, 15, 20, 25, 30]
 param_grid = dict(batch_size=batch_size, epochs=epochs)
 grid = GridSearchCV(estimator=model, param_grid=param_grid)
 
-grid_result = grid.fit(X_data, y_data_g)
+grid_result = grid.fit(X_data, gender)
 
 # summarize results
 print("Best: %f using %s" % (grid_result.best_score_, grid_result.best_params_))
