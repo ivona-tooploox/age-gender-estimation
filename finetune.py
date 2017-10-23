@@ -105,8 +105,10 @@ print('y_a', y_data_a)
 model = KerasClassifier(build_fn = create_model, verbose=0)
 
 # define the grid search parameters
-batch_size = [10, 20, 32, 64]
-epochs = [10, 15, 20, 25, 30]
+# batch_size = [10, 20, 32, 64]
+batch_size = [10]
+# epochs = [10, 15, 20, 25, 30]
+epochs = [10]
 param_grid = dict(batch_size=batch_size, epochs=epochs)
 grid = GridSearchCV(estimator=model, param_grid=param_grid)
 

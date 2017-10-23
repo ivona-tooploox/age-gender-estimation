@@ -18,7 +18,7 @@ class WideResNet:
     def __init__(self, image_size, depth=16, k=8):
         self._depth = depth
         self._k = k
-        self._dropout_probability = 0
+        self._dropout_probability = 0.1
         self._weight_decay = 0.0005
         self._use_bias = False
         self._weight_init = "he_normal"
@@ -137,8 +137,8 @@ class WideResNet:
         predictions_a = Dense(units=101, kernel_initializer=self._weight_init, use_bias=self._use_bias,
                               kernel_regularizer=l2(self._weight_decay), activation="softmax")(flatten)
 
-        # model = Model(inputs=inputs, outputs=[predictions_g, predictions_a])
-        model = Model(inputs=inputs, outputs=predictions_g)
+        model = Model(inputs=inputs, outputs=[predictions_g, predictions_a])
+        # model = Model(inputs=inputs, outputs=predictions_g)
 
 
         return model
