@@ -2,11 +2,12 @@ import pandas as pd
 import logging
 import argparse
 import os
-import numpy as np
+import numpy
+from sklearn.model_selection import GridSearchCV
 from keras.callbacks import LearningRateScheduler, ModelCheckpoint
-from keras.preprocessing.image import ImageDataGenerator
 from keras.optimizers import SGD
 from keras.utils import np_utils
+from keras.wrappers.scikit_learn import KerasClassifier
 from wide_resnet import WideResNet
 from utils import mk_dir, load_data
 
@@ -42,50 +43,108 @@ def get_args():
                         help="width of network")
     parser.add_argument("--validation_split", type=float, default=0.1,
                         help="validation split ratio")
+    parser.add_argument("--freeze_layers", type=int, default=0,
+                        help="Freeze layers for training")
     args = parser.parse_args()
     return args
 
-
-
-    
-
-
-
-def main():
-    args = get_args()
-    input_path = args.input
-    batch_size = args.batch_size
-    nb_epochs = args.nb_epochs
-    depth = args.depth
-    k = args.width
-    validation_split = args.validation_split
-
-    logging.debug("Loading data...")
-
-    image, gender, age, _, image_size, _ = load_data(input_path)
-    X_data = image
-    # y_data_g = np_utils.to_categorical(gender, 2)
-    # y_data_a = np_utils.to_categorical(age, 101)
-
-    #Load weights
-    weight_file = os.path.join("pretrained_models", "weights.18-4.06.hdf5")
-    
-    # Build model
+def create_model():
     model = WideResNet(image_size, depth=depth, k=k)()
-    model.load_weights(weight_file)
 
-    print('Model layers number', len(model.layers))
-    for layer in model.layers:
-        print(layer)
+    # Load weights
+    weight_file = os.path.join("pretrained_models", "weights.18-4.06.hdf5")
+    model.load_weights(weight_file, by_name=True)
 
-    #save output as numpy array
-    bottleneck_features = model.predict(X_data)
+    # # set the first 50 layers 
+    # # to non-trainable (weights will not be updated)
+    # print(len(model.layers))
+    # if freeze_layers > 0 :
+    #     for layer in model.layers[:freeze_layers]:
+    #         layer.trainable = False
 
-    np.save(open('bottleneck_features.npy', 'wb'), bottleneck_features[1])
+    # Compile model
+    sgd = SGD(lr=0.1, momentum=0.9, nesterov=True)
+    model.compile(optimizer=sgd, loss=["binary_crossentropy"],
+                  metrics=['accuracy'])
+
+    logging.debug("Model summary...")
+    model.count_params()
+    model.summary()
+
+    return model
+
+args = get_args()
+input_path = args.input
+batch_size = args.batch_size
+nb_epochs = args.nb_epochs
+freeze_layers = args.freeze_layers
+depth = args.depth
+k = args.width
+validation_split = args.validation_split
+
+# fix random seed for reproducibility
+seed = 7
+numpy.random.seed(seed)
+
+# Load dataset
+logging.debug("Loading data...")
+image, gender, age, _, image_size, _ = load_data(input_path)
+#reshape image data which is in format 64 x 64 x 3 <-> 12288 
+X_data = image
+n_samples = len(X_data)
+# X_data = image.reshape((n_samples, 12288))
+print(gender, 'raw y_data_g')
+y_data_g = np_utils.to_categorical(gender, 2)
+y_data_a = np_utils.to_categorical(age, 101)
+
+print('X shape', X_data.shape)
+print('y_g', y_data_g)
+print('y_a', y_data_a)
+
+
+model = KerasClassifier(build_fn = create_model, verbose=0)
+
+# define the grid search parameters
+batch_size = [10, 20, 32, 64]
+epochs = [10, 15, 20, 25, 30]
+param_grid = dict(batch_size=batch_size, epochs=epochs)
+grid = GridSearchCV(estimator=model, param_grid=param_grid)
+
+grid_result = grid.fit(X_data, y_data_g)
+
+# summarize results
+print("Best: %f using %s" % (grid_result.best_score_, grid_result.best_params_))
+means = grid_result.cv_results_['mean_test_score']
+stds = grid_result.cv_results_['std_test_score']
+params = grid_result.cv_results_['params']
+for mean, stdev, param in zip(means, stds, params):
+    print("%f (%f) with: %r" % (mean, stdev, param))
 
     
 
-    
+    # logging.debug("Saving model...")
+    # mk_dir("models")
+    # with open(os.path.join("models", "WRN_{}_{}.json".format(depth, k)), "w") as f:
+    #     f.write(model.to_json())
 
-if __name__ == '__main__':
-    main()
+    # mk_dir("checkpoints")
+    # callbacks = [LearningRateScheduler(schedule=Schedule(nb_epochs)),
+    #              ModelCheckpoint("checkpoints/weights.{epoch:02d}-{val_loss:.2f}.hdf5",
+    #                              monitor="val_loss",
+    #                              verbose=1,
+    #                              save_best_only=True,
+    #                              mode="auto")
+    #              ]
+
+    # logging.debug("Running training...")
+    # # print('length of X', len(X_data))
+    # # print('length of y_data_g', y_data_g)
+    # # print('length of y_data_a', len(y_data_a))
+    # hist = model.fit(X_data, [y_data_g, y_data_a], batch_size=batch_size, epochs=nb_epochs, callbacks=callbacks,
+    #                  validation_split=validation_split)
+
+    # logging.debug("Saving weights...")
+    # model.save_weights(os.path.join("models", "WRN_{}_{}.h5".format(depth, k)), overwrite=True)
+    # pd.DataFrame(hist.history).to_hdf(os.path.join("models", "history_{}_{}.h5".format(depth, k)), "history")
+
+
